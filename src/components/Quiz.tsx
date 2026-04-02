@@ -1,72 +1,76 @@
-import React, { useState } from 'react'
-import './Quiz.css'
-import QuizQuestion from '../core/QuizQuestion';
-
-interface QuizState {
-  questions: QuizQuestion[]
-  currentQuestionIndex: number
-  selectedAnswer: string | null
-  score: number
-}
+import React, { useState, useMemo } from 'react';
+import './Quiz.css';
+import QuizCore from '../core/QuizCore'; 
 
 const Quiz: React.FC = () => {
-  const initialQuestions: QuizQuestion[] = [
-    {
-      question: 'What is the capital of France?',
-      options: ['London', 'Berlin', 'Paris', 'Madrid'],
-      correctAnswer: 'Paris',
-    },
-  ];
-  const [state, setState] = useState<QuizState>({
-    questions: initialQuestions,
-    currentQuestionIndex: 0,  // Initialize the current question index.
-    selectedAnswer: null,  // Initialize the selected answer.
-    score: 0,  // Initialize the score.
-  });
+  const quiz = useMemo(() => new QuizCore(), []);
+
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); 
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null); 
+  const [showScore, setShowScore] = useState(false); 
+
+  const currentQuestion = quiz.getCurrentQuestion();
 
   const handleOptionSelect = (option: string): void => {
-    setState((prevState) => ({ ...prevState, selectedAnswer: option }));
-  }
-
+    setSelectedAnswer(option); 
+  };
 
   const handleButtonClick = (): void => {
-    // Task3: Implement the logic for button click, such as moving to the next question.
-  } 
+    if (selectedAnswer) {
+      quiz.answerQuestion(selectedAnswer);
+      
+      if (quiz.hasNextQuestion()) {
+        quiz.nextQuestion(); 
+        setCurrentQuestionIndex(prev => prev + 1); 
+        setSelectedAnswer(null); 
+      } else {
+        setShowScore(true);
+      }
+    }
+  };
 
-  const { questions, currentQuestionIndex, selectedAnswer, score } = state;
-  const currentQuestion = questions[currentQuestionIndex];
-
-  if (!currentQuestion) {
+  if (showScore) {
     return (
-      <div>
-        <h2>Quiz Completed</h2>
-        <p>Final Score: {score} out of {questions.length}</p>
+      <div className="quiz-container">
+        <h2>Quiz Completed!</h2>
+        <p className="score-text">Final Score: {quiz.getScore()} out of {quiz.getTotalQuestions()}</p>
       </div>
     );
   }
 
+  if (!currentQuestion) return <div>Loading questions...</div>;
+
   return (
-    <div>
+    <div className="quiz-container">
       <h2>Quiz Question:</h2>
-      <p>{currentQuestion.question}</p>
+      <p className="question-text">{currentQuestion.question}</p>
     
       <h3>Answer Options:</h3>
-      <ul>
+      <ul className="options-list">
         {currentQuestion.options.map((option) => (
           <li
             key={option}
             onClick={() => handleOptionSelect(option)}
-            className={selectedAnswer === option ? 'selected' : ''}
+            // UX: Сонгогдсон хариултыг CSS-ээр тодруулах [cite: 30]
+            className={`option-item ${selectedAnswer === option ? 'selected' : ''}`}
           >
             {option}
           </li>
         ))}
       </ul>
 
-      <h3>Selected Answer:</h3>
-      <p>{selectedAnswer ?? 'No answer selected'}</p>
+      <div className="status-section">
+        <h3>Selected Answer:</h3>
+        <p>{selectedAnswer ?? 'No answer selected'}</p>
+      </div>
 
-      <button onClick={handleButtonClick}>Next Question</button>
+      <button 
+        className="next-button" 
+        onClick={handleButtonClick}
+        disabled={!selectedAnswer} 
+      >
+        {quiz.hasNextQuestion() ? 'Next Question' : 'Submit'}
+      </button>
     </div>
   );
 };
